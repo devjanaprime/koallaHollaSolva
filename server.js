@@ -4,6 +4,15 @@ var app = express();
 var path = require( 'path' );
 var bodyParser = require( 'body-parser' );
 var pg = require( 'pg' );
+// pool config
+var config = {
+  database: 'koalaHolla',
+  host: 'localhost',
+  port: 5432,
+  max: 27
+}; // end pool config
+// create a pool that uses this config
+var pool = new pg.Pool( config );
 
 // uses
 app.use( express.static( 'public' ) );
@@ -28,17 +37,24 @@ app.get( '/koalas', function( req, res ){
   console.log( '/koalas get hit' );
 
   var allKoalas = [];
-
-  //// REPLACE WITH DATABASE STUFF LATER
-  var tempKoala = {
-    name: 'Anjeli',
-    sex: 'f',
-    age: 3,
-    transfer : true,
-    notes: 'likes good music'
-  }; // just a test
-  allKoalas.push( tempKoala );
-  /////
-
-  res.send( allKoalas );
+  // connect to db
+  pool.connect( function( err, connection, done ){
+    if( err ){
+      console.log( err );
+      res.send( 400 )
+    } //end Error
+    else{
+      console.log( 'connected to db' );
+      // send a query to get all the koalas
+      var resultSet = connection.query( "SELECT * from koalas" );
+      // translate the result set into an array
+      resultSet.on( 'row', function( row ){
+        allKoalas.push( row );
+      }); //end on row
+      resultSet.on( 'end', function(){
+        // res.send the array back to client
+        res.send( allKoalas );
+      }); //end on end
+    } // end no error
+  }) // end pool connect
 }); //end get koalas
